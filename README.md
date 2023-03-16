@@ -1,5 +1,9 @@
 # Obsidian paste image rename
 
+```bash
+git remote add upstream git@github.com:reorx/obsidian-paste-image-rename.git
+```
+
 > :loudspeaker: Starting from 1.4.0, Paste image rename becomes a general-purpose renaming plugin
 > that can handle all attachments added to the vault.
 

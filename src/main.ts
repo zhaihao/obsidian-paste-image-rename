@@ -21,7 +21,7 @@ import {
   TAbstractFile,
   TFile,
 } from 'obsidian';
-
+const subProcess = require('child_process')
 import { ImageBatchRenameModal } from './batch';
 import { renderTemplate } from './template';
 import {
@@ -60,6 +60,19 @@ const DEFAULT_SETTINGS: PluginSettings = {
 
 const PASTED_IMAGE_PREFIX = 'Pasted image '
 
+const base:string ='/Users/zhaihao/Documents/ORISON'
+function toAvif(file:string) {
+	subProcess.exec(`/Users/zhaihao/Code/osx-env/scripts/2avif.sh "${base}/${file}"` ,
+		(err: any, stdout: { toString: () => any; }, stderr: { toString: () => any; }) => {
+		if (err) {
+			console.error(err)
+			throw new Error("avif 转换失败")
+		} else {
+			console.log(`The stdout from shell: ${stdout.toString()}`)
+			console.log(`The stderr from shell: ${stderr.toString()}`)
+		}
+	})
+}
 
 export default class PasteImageRenamePlugin extends Plugin {
 	settings: PluginSettings
@@ -84,6 +97,9 @@ export default class PasteImageRenamePlugin extends Plugin {
 				// always ignore markdown file creation
 				if (isMarkdownFile(file))
 					return
+				if (file.extension == "avif") {
+					return;
+				}
 				if (isPastedImage(file)) {
 					debugLog('pasted image created', file)
 					this.startRenameProcess(file, this.settings.autoRename)
@@ -144,7 +160,7 @@ export default class PasteImageRenamePlugin extends Plugin {
 			this.openRenameModal(file, isMeaningful ? stem : '', activeFile.path)
 			return
 		}
-		this.renameFile(file, newName, activeFile.path, true)
+		await this.renameFile(file, newName, activeFile.path, true)
 	}
 
 	async renameFile(file: TFile, inputNewName: string, sourcePath: string, replaceCurrentLine?: boolean) {
@@ -172,7 +188,15 @@ export default class PasteImageRenamePlugin extends Plugin {
 		// in case fileManager.renameFile may not update the internal link in the active file,
 		// we manually replace the current line by manipulating the editor
 
-		const newLinkText = this.app.fileManager.generateMarkdownLink(file, sourcePath)
+		let newLinkText = this.app.fileManager.generateMarkdownLink(file, sourcePath)
+		if(file.extension.toLowerCase() === "svg"){
+			// skip covert
+			console.log("skip covert svg file")
+		} else {// covert
+			toAvif(file.path)
+			newLinkText = newLinkText.substring(0, newLinkText.lastIndexOf("."))+".avif]]"
+		}
+
 		debugLog('replace text', linkText, newLinkText)
 
 		const editor = this.getActiveEditor()
@@ -314,7 +338,7 @@ export default class PasteImageRenamePlugin extends Plugin {
 				`^(?<number>\\d+)${delimiterEscaped}(?<name>${newNameStemEscaped})\\.${newNameExt}$`)
 		} else {
 			dupNameRegex = new RegExp(
-				`^(?<name>${newNameStemEscaped})${delimiterEscaped}(?<number>\\d+)\\.${newNameExt}$`)
+				`^(?<name>${newNameStemEscaped})${delimiterEscaped}(?<number>\\d+)\\.(png|jpe?g|bmp|webp|gif|avif|svg)$`)
 		}
 		debugLog('dupNameRegex', dupNameRegex)
 
